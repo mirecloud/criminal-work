@@ -1,0 +1,19 @@
+# Réglages du projet crimes — modifier ICI, jamais dans les notebooks.
+
+[experiment]
+seed = 510                      # graine aléatoire : mêmes résultats à chaque exécution
+
+[data]
+path = "Data/actes-criminels.csv"   # relatif à la racine du projet
+
+[panel]
+# Unité de modélisation : 1 PDQ × 1 semaine (lundi → dimanche)
+lag_days = 14                   # les 14 derniers jours sont sous-déclarés : on les exclut
+active_since = "2025-01-01"     # on garde les PDQ encore actifs depuis cette date…
+min_acts = 100                  # …avec au moins ce nombre d'actes
+
+[split]
+# Découpage TEMPOREL (comme le prof)
+train_end = "2023-01-01"        # train      : semaines avant 2023
+validation_end = "2024-01-01"   # validation : année 2023
+                                # test       : 2024 et après — FERMÉ jusqu'à la fin

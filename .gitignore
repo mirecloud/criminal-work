@@ -1,0 +1,15 @@
+# Environnement virtuel (se recrée avec : uv sync)
+.venv/
+
+# Données brutes (téléchargées depuis le portail de données ouvertes)
+Data/*.csv
+
+# Résultats générés par les notebooks
+artifacts/
+
+# Fichiers automatiques de Python / Jupyter
+__pycache__/
+.ipynb_checkpoints/
+
+# Document du cours (pas notre travail)
+*.pdf
