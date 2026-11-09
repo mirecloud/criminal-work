@@ -23,3 +23,14 @@ validation_end = "2024-01-01"   # validation : année 2023
 horizon = 4                # écart entre la dernière semaine consolidée du fichier et la semaine prédite
 lags = [4, 5, 52]          # il y a 4 semaines, 5 semaines, et la même semaine l'an passé
 fenetres = [4, 12]         # moyennes des 4 et 12 dernières semaines consolidées
+
+[comparaison]
+premiere_annee = 2019
+derniere_annee_choix = 2023
+derniere_annee = 2026
+tolerance_mae = 0.05       # actes par PDQ-semaine ; départage en faveur du plus simple
+poids_moy_4 = 0.5          # le reste du poids va à moy_12
+ridge_alpha = 10.0
+seuil_hausse = 5.0         # actes au-dessus de la normale de 12 semaines
+bootstrap_bloc_semaines = 8
+bootstrap_repetitions = 2000
