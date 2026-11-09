@@ -72,7 +72,7 @@ def verifier(texte, d, pdq_connus):
         if not any(abs(x - a) < 0.051 or x == round(a) for a in autorises):
             erreurs.append("chiffre_invente")
             break
-    cites = {int(n) for groupe in re.findall(r"PDQ\s+(\d+(?:\s*(?:,|et|ou)\s*\d+)*)", texte)
+    cites = {int(n) for groupe in re.findall(r"PDQ\s*(\d+(?:\s*(?:,|et|ou)\s*\d+)*)", texte)
              for n in re.findall(r"\d+", groupe)}
     if cites - {int(p) for p in pdq_connus}:
         erreurs.append("pdq_inconnu")
