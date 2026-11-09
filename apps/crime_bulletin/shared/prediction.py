@@ -25,6 +25,7 @@ class Prevision:
             raise ValueError("Ce module attend un modèle qui corrige la normale (notebook 04).")
         self.horizon = self.meta["lag_min_semaines"]
         self.marge = self.meta["marge_erreur"]
+        self.fin_entrainement = pd.Timestamp(self.meta["entraine_jusqu_au"])
         self.version = f"{self.meta['modele_retenu']}-{self.empreinte}"
         self.panel = pd.read_parquet(ART / "00_start_here" / "panel.parquet")[["SEMAINE", "PDQ", "y"]]
 

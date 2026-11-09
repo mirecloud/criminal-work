@@ -28,6 +28,7 @@ st.markdown("""
          margin-bottom: 10px; letter-spacing: .02em;}
   .pill.prevision {background: rgba(56,189,248,.15); color: #7dd3fc; border: 1px solid rgba(56,189,248,.45);}
   .pill.rejeu {background: rgba(251,191,36,.12); color: #fcd34d; border: 1px solid rgba(251,191,36,.45);}
+  .pill.vue {background: rgba(244,114,182,.12); color: #f9a8d4; border: 1px solid rgba(244,114,182,.45);}
   .kpis {display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 8px;}
   .kpi {background: linear-gradient(180deg, #141a2e 0%, #10152a 100%); border: 1px solid #232b45;
         border-radius: 14px; padding: 16px 18px; box-shadow: 0 8px 24px rgba(0,0,0,.35);}
@@ -93,8 +94,13 @@ passe = bool(tableau["reel"].notna().all())
 total, normale = tableau["prevision"].sum(), tableau["normale"].sum()
 
 # --- En-tête -----------------------------------------------------------------------------
-pastille = '<span class="pill rejeu">DIMANCHE REJOUÉ · réel connu</span>' if passe else \
-           '<span class="pill prevision">PRÉVISION · réel inconnu</span>'
+if prev["vue_a_l_entrainement"]:
+    pastille = ('<span class="pill rejeu">DIMANCHE REJOUÉ · réel connu</span> '
+                '<span class="pill vue">SEMAINE VUE À L\'ENTRAÎNEMENT · le rejeu ne prouve rien</span>')
+elif passe:
+    pastille = '<span class="pill rejeu">DIMANCHE REJOUÉ · réel connu</span>'
+else:
+    pastille = '<span class="pill prevision">PRÉVISION · réel inconnu</span>'
 st.markdown(f"""<div class="hero">{pastille}
   <h1>Semaine du {date_fr(prev['semaine_predite'])}</h1>
   <p>Données consolidées jusqu'à la semaine du {date_fr(prev['derniere_semaine_connue'])} · 29 postes de quartier</p></div>""",
@@ -105,11 +111,12 @@ cartes = [
     kpi("Total prévu", f"{total:.0f}", "actes déclarés, 29 PDQ"),
     kpi("Écart à la normale", f"{ecart_total:+.0f}", "par rapport aux 12 dernières semaines",
         "up" if ecart_total > 0 else "down"),
-    kpi("Marge typique", f"± {prev['marge']}", "actes par PDQ (mesurée au test)"),
+    kpi("Marge typique", f"± {prev['marge']}", "actes par PDQ (rejeu 2024–2026)"),
 ]
 if passe:
     erreur = (tableau["prevision"] - tableau["reel"]).abs().mean()
-    cartes.append(kpi("Erreur réelle", f"{erreur:.1f}", "actes par PDQ cette semaine",
+    sous = "actes par PDQ · semaine vue à l'entraînement" if prev["vue_a_l_entrainement"] else "actes par PDQ cette semaine"
+    cartes.append(kpi("Erreur réelle", f"{erreur:.1f}", sous,
                       "up" if erreur > prev["marge"] else "down"))
 else:
     cartes.append(kpi("PDQ en hausse", f"{int((tableau['ecart'] > 0).sum())}", "au-dessus de leur normale"))

@@ -29,6 +29,7 @@ class PrevisionReponse(BaseModel):
     derniere_semaine_connue: str
     marge: float
     modele: str
+    vue_a_l_entrainement: bool  # vrai : le modèle servi a appris sur cette semaine, le rejeu ne prouve rien
     lignes: list[Ligne]
 
 
@@ -58,7 +59,7 @@ async def lifespan(app):
 
 
 app = FastAPI(title="Bilan hebdomadaire des PDQ", version="0.1.0", lifespan=lifespan,
-              description="Prévision par PDQ (modèle du notebook 03) et bilan rédigé par le LLM, contrôlé automatiquement.")
+              description="Prévision par PDQ (modèle du notebook 04) et bilan rédigé par le LLM, contrôlé automatiquement.")
 
 
 @app.middleware("http")
@@ -75,7 +76,7 @@ async def journal(request: Request, call_next):
 
 def modele():
     if app.state.prevision is None:
-        raise HTTPException(503, "Modèle indisponible : vérifie artifacts/03_historique.")
+        raise HTTPException(503, "Modèle indisponible : vérifie artifacts/04_comparaison.")
     return app.state.prevision
 
 
@@ -112,7 +113,8 @@ def prevision(derniere_connue: str | None = Query(None, description="AAAA-MM-JJ 
     lignes = [Ligne(pdq=r.PDQ, prevision=r.prevision, normale=r.normale, ecart=r.ecart,
                     reel=None if r.reel is None else int(r.reel)) for r in tableau.itertuples()]
     return PrevisionReponse(semaine_predite=cible.date().isoformat(), derniere_semaine_connue=dl.date().isoformat(),
-                            marge=m.marge, modele=m.version, lignes=lignes)
+                            marge=m.marge, modele=m.version, vue_a_l_entrainement=bool(cible <= m.fin_entrainement),
+                            lignes=lignes)
 
 
 @app.post("/bilan", response_model=BilanReponse)
