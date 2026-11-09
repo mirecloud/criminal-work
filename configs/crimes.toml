@@ -20,5 +20,6 @@ validation_end = "2024-01-01"   # validation : année 2023
 
 [historique]
 # Contrat v2 : on peut utiliser les semaines passées, mais seulement celles déjà consolidées.
-lags = [3, 4, 52]          # il y a 3 semaines, 4 semaines, et la même semaine l'an passé
+horizon = 4                # écart entre la dernière semaine consolidée du fichier et la semaine prédite
+lags = [4, 5, 52]          # il y a 4 semaines, 5 semaines, et la même semaine l'an passé
 fenetres = [4, 12]         # moyennes des 4 et 12 dernières semaines consolidées
