@@ -13,3 +13,6 @@ __pycache__/
 
 # Document du cours (pas notre travail)
 *.pdf
+
+# Secrets (clé du LLM) : jamais dans Git
+.env
