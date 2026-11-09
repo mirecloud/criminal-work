@@ -23,3 +23,10 @@ validation_end = "2024-01-01"   # validation : année 2023
 horizon = 4                # écart entre la dernière semaine consolidée du fichier et la semaine prédite
 lags = [4, 5, 52]          # il y a 4 semaines, 5 semaines, et la même semaine l'an passé
 fenetres = [4, 12]         # moyennes des 4 et 12 dernières semaines consolidées
+
+[comparaison]
+# Notebook 04 : origine glissante. Règle fixée AVANT de comparer les candidats.
+annees_choix = [2019, 2023]       # on choisit le modèle sur ces années (réentraîné chaque 1er janvier)
+annees_diagnostic = [2024, 2026]  # période déjà consultée (notebooks 02-03) : diagnostic seulement
+biais_max_pdq = 2.0               # un candidat est exclu si un PDQ est biaisé de plus de 2 actes sur les années de choix
+seuil_hausse = 5                  # « hausse notable » = réel >= normale + 5 actes

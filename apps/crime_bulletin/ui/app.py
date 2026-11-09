@@ -165,17 +165,19 @@ with onglet_limites:
     gauche, droite = st.columns(2)
     gauche.markdown(
         "#### Comment c'est calculé\n"
-        "1. **Modèle ML** (notebook 03) : boosting sur l'historique consolidé de chaque PDQ "
-        "(il y a 4 et 5 semaines, l'an passé, moyennes 4 et 12 semaines) + mois.\n"
-        "2. **Normale** : moyenne des 12 dernières semaines consolidées du PDQ.\n"
+        "1. **Normale** : moyenne des 12 dernières semaines consolidées du PDQ.\n"
+        "2. **Modèle ML** (notebook 04) : un Ridge apprend de combien corriger la normale, à partir de la tendance "
+        "récente (4 semaines), de la dernière semaine connue, de la même semaine l'an passé et du mois. "
+        "Prévision = normale + correction.\n"
         "3. **LLM** (Qwen3-14B, homelab) : rédige à partir d'un JSON de chiffres, sans accès aux données.\n"
         "4. **Contrôle** : règles fixes (chiffres, PDQ, mention obligatoire, longueur).")
     droite.markdown(
         "#### Limites connues\n"
         "- **Actes déclarés**, pas crimes commis ; les 14 derniers jours sont exclus.\n"
-        f"- Erreur typique de ± {prev['marge']} actes par PDQ et par semaine (test 2024–2026).\n"
-        "- **PDQ 21** : sous-estimé (biais de +9,4 au test) depuis la fermeture du PDQ 22 ; "
-        "une forte baisse annoncée n'est pas fiable.\n"
+        f"- Erreur typique de ± {prev['marge']} actes par PDQ et par semaine (rejeu rétrospectif 2024–2026) : "
+        "un écart plus petit que cette marge n'est pas une vraie hausse.\n"
+        "- Le modèle prévoit un **niveau**, il ne détecte pas les pics ponctuels.\n"
+        "- Un changement brusque n'entre dans la normale qu'après 4 semaines.\n"
         "- Aucun événement (fête, météo, opération policière) n'est connu du modèle.")
 
 st.markdown('<div class="pied">Mirecloud · Projet intégrateur ML510 · Polytechnique Montréal · '

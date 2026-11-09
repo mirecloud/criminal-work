@@ -12,7 +12,7 @@ MENTION = "Il s'agit d'actes déclarés ; prévision indicative, à valider par 
 ERREURS = {
     "chiffre_invente": "Le texte contient un chiffre absent des données du modèle.",
     "pdq_inconnu": "Le texte cite un PDQ qui n'est pas dans la prévision.",
-    "hausses_absentes": "Le texte ne nomme pas les trois PDQ en plus forte hausse.",
+    "hausses_absentes": "Le texte ne nomme pas les PDQ en plus forte hausse.",
     "mention_absente": "La mention « actes déclarés ; prévision indicative » manque.",
     "trop_long": "Le texte dépasse 5 phrases.",
 }
@@ -25,8 +25,8 @@ def donnees(cible, tableau, marge, version, derniere_connue):
         "semaine_predite": cible.date().isoformat(),
         "derniere_semaine_connue": derniere_connue.date().isoformat(),
         "marge_erreur_typique_actes_par_pdq": marge,
-        "hausses": [ligne(r) for r in tableau.head(3).itertuples()],
-        "baisses": [ligne(r) for r in tableau.tail(3).iloc[::-1].itertuples()],
+        "hausses": [ligne(r) for r in tableau[tableau["ecart"] > 0].head(3).itertuples()],
+        "baisses": [ligne(r) for r in tableau[tableau["ecart"] < 0].tail(3).iloc[::-1].itertuples()],
         "total_prevu": round(float(tableau["prevision"].sum()), 1),
         "total_normale": round(float(tableau["normale"].sum()), 1),
         "modele": version,

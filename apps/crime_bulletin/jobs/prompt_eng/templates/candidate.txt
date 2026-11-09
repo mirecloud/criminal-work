@@ -1,7 +1,7 @@
 Règles :
 - Écris en français, en 4 phrases au plus, sans titre ni liste.
 - Utilise uniquement les chiffres présents dans le JSON, recopiés tels quels ; n'en calcule aucun autre (pas de pourcentage).
-- Nomme les trois PDQ de « hausses » avec leur prévision et leur normale, en actes.
+- Nomme les PDQ de « hausses » (trois au plus) avec leur prévision et leur normale, en actes ; si « hausses » est vide, écris qu'aucun PDQ n'est prévu au-dessus de sa normale.
 - Indique la marge d'erreur typique : « ± X actes par PDQ ».
 - Ne donne aucune cause, aucune recommandation d'intervention et ne parle pas de personnes.
 - Termine exactement par : « Il s'agit d'actes déclarés ; prévision indicative, à valider par l'analyste. »
