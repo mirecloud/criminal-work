@@ -30,3 +30,9 @@ annees_choix = [2019, 2023]       # on choisit le modèle sur ces années (réen
 annees_diagnostic = [2024, 2026]  # période déjà consultée (notebooks 02-03) : diagnostic seulement
 biais_max_pdq = 2.0               # un candidat est exclu si un PDQ est biaisé de plus de 2 actes sur les années de choix
 seuil_hausse = 5                  # « hausse notable » = réel >= normale + 5 actes
+
+[interface]
+# Affichage seulement : ne change ni le modèle ni son évaluation.
+seuil_signal = 3.0                # écart prévu (en actes) à partir duquel l'interface parle d'un écart « notable » ;
+                                  # en dessous, le sens de la correction n'est juste que ~6 fois sur 10 (rejeu 2024–2026)
+semaines_historique = 26          # longueur de la courbe d'historique d'un PDQ

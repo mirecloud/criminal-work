@@ -27,10 +27,24 @@ class Ligne(BaseModel):
 class PrevisionReponse(BaseModel):
     semaine_predite: str
     derniere_semaine_connue: str
-    marge: float
+    marge: float                # erreur absolue moyenne du modèle (actes par PDQ)
+    marge_90: float | None      # erreur absolue dépassée 1 fois sur 10 ; None si le diagnostic est absent
+    seuil_signal: float         # écart prévu à partir duquel l'interface parle d'un écart notable
+    fenetre_normale: int        # nombre de semaines consolidées dans la normale
     modele: str
     vue_a_l_entrainement: bool  # vrai : le modèle servi a appris sur cette semaine, le rejeu ne prouve rien
     lignes: list[Ligne]
+
+
+class Point(BaseModel):
+    semaine: str
+    actes: int
+    consolide: bool  # faux : semaine connue seulement après le dimanche choisi (visible en rejeu)
+
+
+class HistoriqueReponse(BaseModel):
+    pdq: str
+    points: list[Point]
 
 
 class BilanDemande(BaseModel):
@@ -113,8 +127,20 @@ def prevision(derniere_connue: str | None = Query(None, description="AAAA-MM-JJ 
     lignes = [Ligne(pdq=r.PDQ, prevision=r.prevision, normale=r.normale, ecart=r.ecart,
                     reel=None if r.reel is None else int(r.reel)) for r in tableau.itertuples()]
     return PrevisionReponse(semaine_predite=cible.date().isoformat(), derniere_semaine_connue=dl.date().isoformat(),
-                            marge=m.marge, modele=m.version, vue_a_l_entrainement=bool(cible <= m.fin_entrainement),
+                            marge=m.marge, marge_90=m.marge_90, seuil_signal=m.seuil_signal,
+                            fenetre_normale=max(m.meta["fenetres"]), modele=m.version, vue_a_l_entrainement=bool(cible <= m.fin_entrainement),
                             lignes=lignes)
+
+
+@app.get("/historique", response_model=HistoriqueReponse)
+def historique(pdq: str, derniere_connue: str | None = Query(None, description="AAAA-MM-JJ ; vide = la plus récente")):
+    """Les dernières semaines d'un PDQ, pour juger si sa prévision est plausible."""
+    try:
+        serie = modele().serie(pdq, derniere_connue)
+    except ValueError as erreur:
+        raise HTTPException(422, str(erreur)) from None
+    return HistoriqueReponse(pdq=pdq, points=[Point(semaine=r.SEMAINE.date().isoformat(), actes=int(r.y), consolide=bool(r.consolide))
+                                              for r in serie.itertuples()])
 
 
 @app.post("/bilan", response_model=BilanReponse)

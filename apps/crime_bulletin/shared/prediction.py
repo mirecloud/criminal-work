@@ -2,6 +2,7 @@
 import hashlib
 import json
 import os
+import tomllib
 from pathlib import Path
 
 import joblib
@@ -28,6 +29,21 @@ class Prevision:
         self.fin_entrainement = pd.Timestamp(self.meta["entraine_jusqu_au"])
         self.version = f"{self.meta['modele_retenu']}-{self.empreinte}"
         self.panel = pd.read_parquet(ART / "00_start_here" / "panel.parquet")[["SEMAINE", "PDQ", "y"]]
+        self.marge_90 = self._marge_90(dossier)
+        try:
+            interface = tomllib.loads((ROOT / "configs" / "crimes.toml").read_text(encoding="utf-8")).get("interface", {})
+        except FileNotFoundError:
+            interface = {}
+        self.seuil_signal = float(interface.get("seuil_signal", 3.0))
+        self.semaines_historique = int(interface.get("semaines_historique", 26))
+
+    def _marge_90(self, dossier):
+        """Erreur absolue dépassée 1 fois sur 10 par le modèle retenu (diagnostic du notebook 04) ; None si absente."""
+        try:
+            diagnostic = pd.read_csv(dossier / "diagnostic_2024_2026.csv", index_col=0)
+            return round(float(diagnostic.loc[self.meta["modele_retenu"], "p90_erreur"]), 1)
+        except (FileNotFoundError, KeyError, ValueError):
+            return None
 
     def historique(self, panel):
         """Mot pour mot la construction du notebook 04 (lags, moyennes consolidées, écarts à la normale)."""
@@ -69,3 +85,14 @@ class Prevision:
         x["reel"] = [reel.get((cible, q)) for q in x["PDQ"]]
         tableau = x[["PDQ", "prevision", "normale", "ecart", "reel"]].sort_values("ecart", ascending=False)
         return cible, tableau.reset_index(drop=True)
+
+    def serie(self, pdq, derniere_connue=None):
+        """Les semaines récentes d'un PDQ : consolidées à la date choisie, puis celles connues depuis (rejeu seulement)."""
+        derniere_connue = pd.Timestamp(derniere_connue) if derniere_connue is not None else self.panel["SEMAINE"].max()
+        s = self.panel[self.panel["PDQ"] == str(pdq)]
+        if s.empty:
+            raise ValueError(f"PDQ inconnu : {pdq}.")
+        debut = derniere_connue - pd.Timedelta(weeks=self.semaines_historique - 1)
+        fin = derniere_connue + pd.Timedelta(weeks=self.horizon)
+        s = s[s["SEMAINE"].between(debut, fin)].sort_values("SEMAINE")
+        return s.assign(consolide=s["SEMAINE"] <= derniere_connue)[["SEMAINE", "y", "consolide"]]
