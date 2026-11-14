@@ -7,11 +7,12 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "shared"))
 import bulletin as B  # noqa: E402
 import prediction as P  # noqa: E402
+import questions as Q  # noqa: E402
 
 PROMPTS = Path(os.getenv("CRIME_PROMPTS", Path(__file__).resolve().parents[1] / "prompts"))
 
@@ -58,6 +59,21 @@ class BilanReponse(BaseModel):
     erreurs: list[str]
     messages: list[str]
     modele: str
+    llm: str
+    secondes: float
+
+
+class QuestionDemande(BaseModel):
+    question: str = Field(min_length=3, max_length=500)
+    derniere_connue: str | None = None
+
+
+class QuestionReponse(BaseModel):
+    semaine_predite: str
+    reponse: str
+    accepte: bool
+    erreurs: list[str]
+    messages: list[str]
     llm: str
     secondes: float
 
@@ -162,3 +178,26 @@ def bilan(demande: BilanDemande):
     return BilanReponse(semaine_predite=d["semaine_predite"], texte=texte, accepte=not erreurs, erreurs=erreurs,
                         messages=[B.ERREURS[e] for e in erreurs], modele=m.version, llm=os.environ["AI_MODEL"],
                         secondes=round(time.perf_counter() - debut, 1))
+
+
+@app.post("/question", response_model=QuestionReponse)
+def question(demande: QuestionDemande):
+    """Une question de l'analyste sur la semaine affichée ; le LLM ne reçoit que les chiffres de cette semaine."""
+    m = modele()
+    try:
+        instructions = (PROMPTS / "questions.txt").read_text(encoding="utf-8")
+    except FileNotFoundError:
+        raise HTTPException(503, "Instructions du LLM absentes (prompts/questions.txt).") from None
+    cible, tableau = _prevoir(m, demande.derniere_connue)
+    d = Q.donnees(cible, tableau, cible - P.pd.Timedelta(weeks=m.horizon), m.marge, m.marge_90, m.seuil_signal,
+                  max(m.meta["fenetres"]), m.version)
+    debut = time.perf_counter()
+    try:
+        texte = Q.repondre(demande.question, d, instructions)
+    except Exception as erreur:  # serveur LLM injoignable, délai dépassé, etc.
+        print(f"LLM indisponible : {type(erreur).__name__}", flush=True)
+        raise HTTPException(503, "Le serveur LLM ne répond pas ; la prévision reste disponible.") from None
+    erreurs = Q.verifier(texte, d, demande.question, instructions, tableau["PDQ"])
+    return QuestionReponse(semaine_predite=d["semaine_predite"], reponse=texte, accepte=not erreurs, erreurs=erreurs,
+                           messages=[Q.ERREURS[e] for e in erreurs], llm=os.environ["AI_MODEL"],
+                           secondes=round(time.perf_counter() - debut, 1))

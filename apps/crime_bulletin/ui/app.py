@@ -8,6 +8,8 @@ import httpx
 import pandas as pd
 import streamlit as st
 
+import carte as C
+
 API = os.getenv("CRIME_API_URL", "http://127.0.0.1:8000")
 ASSETS = Path(__file__).resolve().parent / "assets"
 api = httpx.Client(base_url=API, timeout=90)
@@ -127,8 +129,8 @@ else:
                       f"{hausses} en hausse, {baisses} en baisse · {seuil:g} actes ou plus"))
 st.markdown(f'<div class="kpis">{"".join(cartes)}</div>', unsafe_allow_html=True)
 
-onglet_bilan, onglet_graphe, onglet_historique, onglet_tableau, onglet_limites = st.tabs(
-    ["📝  Bilan rédigé", "📊  Écarts par PDQ", "📈  Historique d'un PDQ", "📋  Tableau", "ℹ️  Méthode et limites"])
+onglet_bilan, onglet_graphe, onglet_carte, onglet_historique, onglet_tableau, onglet_limites = st.tabs(
+    ["📝  Bilan rédigé", "📊  Écarts par PDQ", "🗺️  Carte", "📈  Historique d'un PDQ", "📋  Tableau", "ℹ️  Méthode et limites"])
 
 # --- Bilan rédigé par le LLM -----------------------------------------------------------------
 with onglet_bilan:
@@ -175,6 +177,60 @@ with onglet_graphe:
                "n'est juste qu'environ 6 fois sur 10 : ne pas y lire une hausse ou une baisse. "
                f"Au-delà, il est juste environ 7 fois sur 10 (rejeu 2024–2026). "
                f"Cette semaine : {len(notables)} PDQ sur {nb_pdq} hors de la bande.")
+
+# --- Carte -------------------------------------------------------------------------------------
+with onglet_carte:
+    mode = st.radio("Colorer les territoires selon", [C.ECART, C.NIVEAU], horizontal=True,
+                    help="Écart : hausse ou baisse prévue par rapport à la normale du poste. Niveau : nombre d'actes prévus.")
+    dessin, sans_territoire = C.carte(tableau, seuil, mode)
+    st.altair_chart(dessin, width="stretch")
+    if mode == C.ECART:
+        st.caption(f"Un territoire n'est coloré que si son écart prévu atteint {seuil:g} actes ; en dessous, le modèle "
+                   "ne distingue pas une hausse d'une baisse. Survoler un territoire pour voir ses chiffres.")
+    else:
+        st.caption("Un niveau élevé reflète surtout la taille et l'achalandage du poste, pas une hausse : "
+                   "pour savoir si un poste s'écarte de son habitude, utiliser « Écart à la normale ».")
+    hors_carte = tableau[tableau["pdq"].isin(sans_territoire)]
+    if len(hors_carte):
+        st.caption("Sans territoire sur la carte : " + " ; ".join(
+            f"PDQ {r.pdq} (prévu {r.prevision:.1f}, écart {r.ecart:+.1f})" for r in hors_carte.itertuples()) + ".")
+    st.caption("Limites des postes de quartier : Ville de Montréal, données ouvertes, CC BY 4.0 (tracé simplifié).")
+
+    # --- Questions au LLM sur la semaine affichée ---
+    st.divider()
+    st.markdown("#### 💬  Poser une question à Qwen sur cette prévision")
+    st.caption(f"Qwen ne voit que les chiffres de la semaine affichée ({nb_pdq} PDQ) et la méthode : ni les causes, "
+               "ni les autres semaines, ni les types de crimes. Chaque question est traitée seule, sans mémoire des précédentes. "
+               "Exemples : « Quels postes sont en baisse notable ? » · « Que prévoit-on pour le PDQ 21 ? » · "
+               "« Comment est calculée la normale ? »")
+    fil = st.session_state.setdefault("questions", {}).setdefault(choix, [])
+    for echange in fil:
+        with st.chat_message("user"):
+            st.write(echange["question"])
+        with st.chat_message("assistant"):
+            if "erreur" in echange:
+                st.error(echange["erreur"])
+                continue
+            st.write(echange["reponse"])
+            for m in echange["messages"]:
+                st.warning(m)
+            st.caption(("✅ Chiffres et PDQ retrouvés dans les données" if echange["accepte"]
+                        else "❌ Contrôle échoué : ne pas utiliser cette réponse telle quelle")
+                       + f" · {echange['secondes']} s · LLM `{echange['llm']}`")
+    demande = st.chat_input("Votre question sur la prévision de cette semaine", key="question_qwen", max_chars=500)
+    if demande:
+        with st.spinner("Qwen réfléchit…"):
+            try:
+                r = api.post("/question", json={"question": demande, "derniere_connue": choix})
+                if r.status_code == 200:
+                    fil.append({"question": demande, **r.json()})
+                else:
+                    detail = r.json().get("detail", "Erreur du service.")
+                    fil.append({"question": demande,
+                                "erreur": detail if isinstance(detail, str) else "Question trop courte ou trop longue."})
+            except httpx.HTTPError:
+                fil.append({"question": demande, "erreur": "Le service ne répond pas."})
+        st.rerun()
 
 # --- Historique d'un PDQ ---------------------------------------------------------------------
 with onglet_historique:
