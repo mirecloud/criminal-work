@@ -23,7 +23,7 @@ spec:
           imagePullSecrets: [{name: dockerhub}]   # identifiant Docker Hub (Secret créé à la main, voir 10-config.yaml)
           containers:
             - name: bilan
-              image: mirecloud/crime-api:1.2.0   # même tag que le Deployment en service
+              image: mirecloud/crime-api:1.3.0   # même tag que le Deployment en service
               command: ["python", "apps/crime_bulletin/jobs/bilan_hebdo.py"]
               env:
                 - {name: CRIME_API_URL, value: "http://crime-api"}

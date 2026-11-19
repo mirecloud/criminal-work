@@ -9,10 +9,12 @@ ERREURS = {
     "chiffre_invente": "La réponse contient un chiffre absent des données de la semaine : à vérifier dans le tableau.",
     "pdq_inconnu": "La réponse cite un PDQ qui n'est pas dans la prévision.",
     "trop_long": "La réponse dépasse 6 phrases.",
-    "hors_sujet": "La réponse ne porte pas sur la prévision de la semaine.",
+    "hors_sujet": "La réponse ne porte pas sur la prévision de la semaine ou une semaine passée.",
+    "lecture_fausse": "La réponse dit « hausse » ou « baisse notable » pour un PDQ qui n'en est pas une.",
 }
 REFUS = "Ces données ne permettent pas de répondre."
-SUJET = re.compile(r"PDQ|normale|prévision|prévu|écart|seuil|modèle|consolidé|erreur|actes", re.IGNORECASE)
+# Une réponse est dans le sujet si elle parle de la prévision ; une salutation polie le fait aussi (« …sur la prévision… »).
+SUJET = re.compile(r"PDQ|normale|prévision|prévu|écart|seuil|modèle|consolidé|erreur|actes|semaine", re.IGNORECASE)
 
 
 def donnees(cible, tableau, derniere_connue, marge, marge_90, seuil, fenetre, version):
@@ -67,6 +69,21 @@ def _nombres(texte):
     return {float(n.replace(",", ".")) for n in re.findall(r"\d+(?:[.,]\d+)?", texte)}
 
 
+def _lecture_fausse(texte, d):
+    """Vrai si une phrase qui ne nomme qu'un PDQ lui donne une lecture (« hausse/baisse notable ») qu'il n'a pas.
+
+    Les chiffres peuvent être justes et la conclusion fausse : un écart de −1,4 est « sous le seuil », pas une baisse.
+    """
+    lectures = {int(r["pdq"]): r["lecture"] for r in d.get("pdq", [])}
+    for phrase in re.split(r"[.!?](?:\s|$)", texte):
+        pdq = {int(n) for groupe in re.findall(r"PDQ\s*(\d+(?:\s*(?:,|et|ou)\s*\d+)*)", phrase)
+               for n in re.findall(r"\d+", groupe)}
+        dit = [mot.lower() + " notable" for mot in re.findall(r"(hausse|baisse) notable", phrase, re.IGNORECASE)]
+        if len(pdq) == 1 and dit and next(iter(pdq)) in lectures and any(l != lectures[next(iter(pdq))] for l in dit):
+            return True
+    return False
+
+
 def verifier(texte, d, question, instructions, pdq_connus):
     """Codes d'erreur (vide = réponse acceptée). Un chiffre est admis s'il vient des données, de la question ou de la méthode."""
     erreurs = []
@@ -78,6 +95,8 @@ def verifier(texte, d, question, instructions, pdq_connus):
              for n in re.findall(r"\d+", groupe)}
     if cites - {int(p) for p in pdq_connus}:
         erreurs.append("pdq_inconnu")
+    if _lecture_fausse(texte, d):
+        erreurs.append("lecture_fausse")
     if REFUS.rstrip(".") not in texte and not SUJET.search(texte):
         erreurs.append("hors_sujet")
     if len([p for p in re.split(r"[.!?»](?:\s|$)", texte) if p.strip()]) > 6:

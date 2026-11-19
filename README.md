@@ -126,9 +126,9 @@ Deux images : l'API embarque le code, les consignes du LLM et les artefacts des 
 Construisez les images depuis la racine, après avoir exécuté les notebooks, puis poussez-les sur Docker Hub (`docker login -u mirecloud` une fois avant) :
 
 ```bash
-docker build -f apps/crime_bulletin/deploy/docker/Dockerfile.api -t mirecloud/crime-api:1.2.0 .
+docker build -f apps/crime_bulletin/deploy/docker/Dockerfile.api -t mirecloud/crime-api:1.3.0 .
 docker build -f apps/crime_bulletin/deploy/docker/Dockerfile.ui -t mirecloud/crime-ui:1.0.0 .
-docker push mirecloud/crime-api:1.2.0
+docker push mirecloud/crime-api:1.3.0
 docker push mirecloud/crime-ui:1.0.0
 ```
 
