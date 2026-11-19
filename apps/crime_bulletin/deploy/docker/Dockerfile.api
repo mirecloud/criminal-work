@@ -1,0 +1,29 @@
+# Image de l'API : code + modèle du notebook 04 + panel du notebook 00 (un tag = une paire code + données).
+# Construire depuis la RACINE du projet, après avoir exécuté les notebooks :
+#   docker build -f apps/crime_bulletin/deploy/docker/Dockerfile.api -t localhost:5000/crime-api:0.1.0 .
+FROM python:3.12-slim-bookworm
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 \
+    CRIME_ROOT=/app
+WORKDIR /app
+RUN groupadd --system --gid 10001 app && useradd --system --uid 10001 --gid app --no-create-home app
+
+# 1) dépendances (couche qui change rarement)
+COPY apps/crime_bulletin/deploy/docker/requirements-api.txt /tmp/requirements.txt
+RUN pip install -r /tmp/requirements.txt
+
+# 2) code, consignes du LLM et réglages
+COPY configs/ configs/
+COPY apps/crime_bulletin/shared/ apps/crime_bulletin/shared/
+COPY apps/crime_bulletin/api/ apps/crime_bulletin/api/
+COPY apps/crime_bulletin/prompts/ apps/crime_bulletin/prompts/
+COPY apps/crime_bulletin/jobs/bilan_hebdo.py apps/crime_bulletin/jobs/
+
+# 3) artefacts lus par prediction.py (le modèle refuse de démarrer si modele.joblib et meta.json divergent)
+COPY artifacts/00_start_here/ artifacts/00_start_here/
+COPY artifacts/04_comparaison/ artifacts/04_comparaison/
+
+USER 10001
+EXPOSE 8000
+HEALTHCHECK --interval=10s --timeout=3s --start-period=20s CMD \
+  python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=2)"
+CMD ["uvicorn", "app:app", "--app-dir", "apps/crime_bulletin/api", "--host", "0.0.0.0", "--port", "8000"]

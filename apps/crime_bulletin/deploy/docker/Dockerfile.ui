@@ -1,0 +1,22 @@
+# Image de l'interface Streamlit : elle ne lit ni le modèle ni les données, seulement l'API (CRIME_API_URL).
+# Construire depuis la RACINE du projet :
+#   docker build -f apps/crime_bulletin/deploy/docker/Dockerfile.ui -t localhost:5000/crime-ui:0.1.0 .
+FROM python:3.12-slim-bookworm
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 \
+    CRIME_API_URL=http://crime-api \
+    STREAMLIT_SERVER_HEADLESS=true STREAMLIT_SERVER_ADDRESS=0.0.0.0 STREAMLIT_SERVER_PORT=8501
+WORKDIR /app
+RUN groupadd --system --gid 10001 app && useradd --system --uid 10001 --gid app --create-home app
+
+COPY apps/crime_bulletin/deploy/docker/requirements-ui.txt /tmp/requirements.txt
+RUN pip install -r /tmp/requirements.txt
+
+# Streamlit lit .streamlit/config.toml dans le dossier courant : le thème suit l'image.
+COPY .streamlit/ .streamlit/
+COPY apps/crime_bulletin/ui/ apps/crime_bulletin/ui/
+
+USER 10001
+EXPOSE 8501
+HEALTHCHECK --interval=10s --timeout=3s --start-period=20s CMD \
+  python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=2)"
+CMD ["streamlit", "run", "apps/crime_bulletin/ui/app.py"]

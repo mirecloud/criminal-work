@@ -1,0 +1,17 @@
+# Entrée HTTP par Traefik (ingress par défaut de k3s). L'interface est à la racine ;
+# l'API n'est pas exposée : seule l'interface et la tâche du lundi l'appellent, dans le cluster.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: crime-bulletin
+  namespace: ml510
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: crimes.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: {name: crime-ui, port: {name: http}}

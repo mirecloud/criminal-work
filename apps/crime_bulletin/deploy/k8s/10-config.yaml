@@ -1,0 +1,13 @@
+# Réglages non secrets du LLM. La clé (LLM_API_KEY) va dans le Secret crime-llm, créé à la main :
+#   kubectl -n ml510 create secret generic crime-llm --from-literal=LLM_API_KEY=...
+# Le certificat de l'autorité mirecloud va dans le ConfigMap crime-llm-ca :
+#   kubectl -n ml510 create configmap crime-llm-ca --from-file=ca.crt=chemin/vers/mirecloud-ca.crt
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: crime-llm
+  namespace: ml510
+data:
+  AI_MODEL: "warshanks/Huihui-Qwen3-14B-abliterated-v2-AWQ"
+  LLM_BASE_URL: "https://vllm.mirecloud.com/v1"
+  LLM_CA_FILE: "/etc/llm-ca/ca.crt"

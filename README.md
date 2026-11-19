@@ -35,8 +35,10 @@ apps/crime_bulletin/
   api/app.py               API FastAPI.
   ui/                      Interface Streamlit (app.py, carte.py, contours des PDQ).
   prompts/                 Consignes données au LLM.
+  jobs/bilan_hebdo.py      Tâche du lundi : demande le bilan et dit s'il passe les contrôles.
   jobs/prompt_eng/         Gabarits utilisés pendant la mise au point du prompt.
-  deploy/k8s/              Réservé au déploiement (pas encore fait).
+  deploy/docker/           Dockerfiles de l'API et de l'interface, dépendances figées.
+  deploy/k8s/              Manifestes Kubernetes (namespace ml510 sur le k3d du homelab).
 livrables/                 Présentation PowerPoint.
 ```
 
@@ -98,6 +100,51 @@ L'interface appelle l'API à l'adresse `CRIME_API_URL` (par défaut `http://127.
 | `POST /bilan` | Bilan rédigé par le LLM, puis vérifié. |
 | `POST /question` | Question libre sur les chiffres de la semaine. |
 
+## Déploiement sur le homelab (k3d)
+
+Deux images : l'API embarque le code, les consignes du LLM et les artefacts des notebooks 00 et 04 (un tag = une paire code + données). L'interface n'embarque que Streamlit et n'appelle que l'API. Le `.env` n'entre jamais dans une image (voir `.dockerignore`).
+
+Construisez les images depuis la racine, après avoir exécuté les notebooks, puis poussez-les dans le registre du cluster :
+
+```bash
+docker build -f apps/crime_bulletin/deploy/docker/Dockerfile.api -t localhost:5000/crime-api:0.1.0 .
+docker build -f apps/crime_bulletin/deploy/docker/Dockerfile.ui -t localhost:5000/crime-ui:0.1.0 .
+docker push localhost:5000/crime-api:0.1.0
+docker push localhost:5000/crime-ui:0.1.0
+```
+
+Pointez `kubectl` sur le cluster k3d, sans changer votre contexte par défaut :
+
+```bash
+export KUBECONFIG=$(k3d kubeconfig write ml520)
+```
+
+Créez le namespace, puis la clé du LLM et le certificat de l'autorité mirecloud. Ces deux objets ne sont pas dans le dépôt :
+
+```bash
+kubectl apply -f apps/crime_bulletin/deploy/k8s/00-namespace.yaml
+kubectl -n ml510 create secret generic crime-llm --from-literal=LLM_API_KEY='<clé>'
+kubectl -n ml510 create configmap crime-llm-ca --from-file=ca.crt=<chemin>/mirecloud-ca.crt
+```
+
+Appliquez le reste et ouvrez l'interface :
+
+```bash
+kubectl apply -f apps/crime_bulletin/deploy/k8s/
+kubectl -n ml510 rollout status deploy/crime-api
+kubectl -n ml510 port-forward svc/crime-ui 8501:80
+```
+
+| Fichier | Contenu |
+|---|---|
+| `10-config.yaml` | Modèle et URL du LLM (non secrets). |
+| `20-api.yaml` | API, 2 réplicas. Le pod ne reçoit du trafic qu'une fois le modèle chargé (`/health/ready`). |
+| `30-ui.yaml` | Interface, 1 réplica (la session Streamlit vit dans le pod). |
+| `40-ingress.yaml` | Entrée Traefik `crimes.localhost` vers l'interface ; l'API reste interne. |
+| `50-cronjob-bilan.yaml` | Chaque lundi 07:00 UTC, bilan de la dernière semaine. Un Job en échec = bilan rejeté, ce qui donne le taux de rejet du LLM. |
+
+Pour une nouvelle version du modèle : relancer les notebooks, construire un nouveau tag, le changer dans `20-api.yaml` et `50-cronjob-bilan.yaml`, puis `kubectl apply`.
+
 ## Méthode
 
 - **Contrat de prévision.** On ne prédit qu'à partir de semaines consolidées, donc 4 semaines à l'avance.
@@ -110,5 +157,5 @@ L'interface appelle l'API à l'adresse `CRIME_API_URL` (par défaut `http://127.
 - Le modèle n'est pas un outil d'alerte. Seulement 48 alertes de hausse sur 2024–2026, dont un tiers fausses.
 - Les chiffres reflètent les déclarations : orienter les patrouilles d'après ces chiffres peut augmenter les déclarations là où on patrouille déjà.
 - La qualité des bilans du LLM n'a pas encore été mesurée, en particulier le taux de rejet par les contrôles.
-- Le déploiement (conteneurs, k3d, tâche planifiée chaque lundi) est planifié mais pas encore réalisé.
+- Le déploiement est écrit et ses images ont été testées dans Docker, mais il n'a pas encore été appliqué au cluster. Le rafraîchissement des données reste manuel : télécharger le CSV, relancer les notebooks, construire un nouveau tag.
 - Aucune donnée personnelle n'est utilisée : seulement des comptes par PDQ et par semaine.

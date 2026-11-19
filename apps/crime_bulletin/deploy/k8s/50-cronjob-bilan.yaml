@@ -1,0 +1,29 @@
+# Chaque lundi : bilan de la dernière semaine consolidée, vérifié par les contrôles.
+# Code 1 = bilan rejeté (Job en échec, visible dans kubectl get jobs) ; code 2 = API ou LLM indisponible.
+# L'historique des Jobs donne le taux de rejet du LLM, la mesure qui manque encore au projet.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: crime-bilan-hebdo
+  namespace: ml510
+spec:
+  schedule: "0 7 * * 1"            # lundi 07:00 (UTC)
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 8
+  failedJobsHistoryLimit: 8
+  jobTemplate:
+    spec:
+      backoffLimit: 0              # un rejet n'est pas transitoire : pas de nouvel essai
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext: {runAsNonRoot: true}
+          containers:
+            - name: bilan
+              image: ml520-registry:5000/crime-api:0.1.0   # même tag que le Deployment en service
+              command: ["python", "apps/crime_bulletin/jobs/bilan_hebdo.py"]
+              env:
+                - {name: CRIME_API_URL, value: "http://crime-api"}
+              resources:
+                requests: {cpu: 50m, memory: 64Mi}
+                limits: {cpu: 200m, memory: 256Mi}

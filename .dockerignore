@@ -1,0 +1,12 @@
+# Contexte de build Docker : seulement ce que les images copient.
+# Le .env (clé du LLM) ne doit JAMAIS entrer dans une image.
+.env
+.git
+.venv
+.ipynb_checkpoints
+**/__pycache__
+**/.ipynb_checkpoints
+Data
+notebooks
+livrables
+*.pdf
