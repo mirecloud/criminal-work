@@ -16,3 +16,6 @@ __pycache__/
 
 # Secrets (clé du LLM) : jamais dans Git
 .env
+
+# Anciennes versions des données et artefacts (avant une mise à jour)
+sauvegarde/
