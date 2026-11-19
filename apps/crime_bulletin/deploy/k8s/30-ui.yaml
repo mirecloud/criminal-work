@@ -14,7 +14,7 @@ spec:
     metadata:
       labels: {app: crime-ui}
     spec:
-      securityContext: {runAsNonRoot: true}
+      securityContext: {runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}
       imagePullSecrets: [{name: dockerhub}]   # identifiant Docker Hub (Secret créé à la main, voir 10-config.yaml)
       containers:
         - name: ui
@@ -22,6 +22,11 @@ spec:
           ports: [{name: http, containerPort: 8501}]
           env:
             - {name: CRIME_API_URL, value: "http://crime-api"}
+            - {name: HOME, value: /tmp}          # Streamlit peut écrire dans ~/.streamlit
+          securityContext:              # rien à écrire hors de /tmp, aucun privilège
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
           resources:
             requests: {cpu: 100m, memory: 256Mi}
             limits: {cpu: 500m, memory: 768Mi}
@@ -33,6 +38,11 @@ spec:
             httpGet: {path: /_stcore/health, port: http}
             initialDelaySeconds: 15
             periodSeconds: 20
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 64Mi}
 ---
 apiVersion: v1
 kind: Service

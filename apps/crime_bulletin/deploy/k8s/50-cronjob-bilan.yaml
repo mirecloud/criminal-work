@@ -1,6 +1,8 @@
 # Chaque lundi : bilan de la dernière semaine consolidée, vérifié par les contrôles.
-# Code 1 = bilan rejeté (Job en échec, visible dans kubectl get jobs) ; code 2 = API ou LLM indisponible.
-# L'historique des Jobs donne le taux de rejet du LLM, la mesure qui manque encore au projet.
+# Job réussi = le service a répondu (bilan accepté OU rejeté : le statut est dans le log JSON).
+# Job en échec = panne (API ou LLM injoignable, LLM non configuré) : c'est la seule alerte.
+# Un an d'historique est gardé pour calculer le taux de rejet :
+#   kubectl -n ml510 logs -l job-name --tail=1 --prefix | grep -c '"rejete"' 
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -9,22 +11,26 @@ metadata:
 spec:
   schedule: "0 7 * * 1"            # lundi 07:00 (UTC)
   concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 8
-  failedJobsHistoryLimit: 8
+  successfulJobsHistoryLimit: 52   # un an de lundis : la base du taux de rejet
+  failedJobsHistoryLimit: 10
   jobTemplate:
     spec:
-      backoffLimit: 0              # un rejet n'est pas transitoire : pas de nouvel essai
+      backoffLimit: 1              # une panne peut être passagère : un seul nouvel essai
       template:
         spec:
           restartPolicy: Never
-          securityContext: {runAsNonRoot: true}
+          securityContext: {runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}
           imagePullSecrets: [{name: dockerhub}]   # identifiant Docker Hub (Secret créé à la main, voir 10-config.yaml)
           containers:
             - name: bilan
-              image: mirecloud/crime-api:1.1.0   # même tag que le Deployment en service
+              image: mirecloud/crime-api:1.2.0   # même tag que le Deployment en service
               command: ["python", "apps/crime_bulletin/jobs/bilan_hebdo.py"]
               env:
                 - {name: CRIME_API_URL, value: "http://crime-api"}
+              securityContext:              # rien à écrire hors de /tmp, aucun privilège
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: {drop: [ALL]}
               resources:
                 requests: {cpu: 50m, memory: 64Mi}
                 limits: {cpu: 200m, memory: 256Mi}

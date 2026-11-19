@@ -13,17 +13,22 @@ spec:
     metadata:
       labels: {app: crime-api}
     spec:
-      securityContext: {runAsNonRoot: true}
+      securityContext: {runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}
       imagePullSecrets: [{name: dockerhub}]   # identifiant Docker Hub (Secret créé à la main, voir 10-config.yaml)
       containers:
         - name: api
-          image: mirecloud/crime-api:1.1.0
+          image: mirecloud/crime-api:1.2.0
           ports: [{name: http, containerPort: 8000}]
           envFrom:
             - configMapRef: {name: crime-llm}
-            - secretRef: {name: crime-llm}
+            - secretRef: {name: crime-llm, optional: true}   # seulement si le vLLM exige une clé
+          securityContext:              # rien à écrire hors de /tmp, aucun privilège
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
           volumeMounts:
             - {name: llm-ca, mountPath: /etc/llm-ca, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
           resources:
             requests: {cpu: 100m, memory: 384Mi}
             limits: {cpu: "1", memory: 1Gi}
@@ -39,6 +44,8 @@ spec:
       volumes:
         - name: llm-ca
           configMap: {name: crime-llm-ca, optional: true}
+        - name: tmp
+          emptyDir: {sizeLimit: 64Mi}
 ---
 apiVersion: v1
 kind: Service

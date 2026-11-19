@@ -1,0 +1,29 @@
+# CI : à chaque push et pull request, les tests et la construction de l'image de l'interface.
+# Les artefacts des notebooks ne sont pas dans Git : les tests de l'API qui en ont besoin sont sautés ici
+# et tournent en local (uv run pytest) avant chaque nouvelle image de l'API.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Dépendances (versions de uv.lock)
+        run: uv sync --frozen
+      - name: Tests
+        run: uv run pytest -v
+      - name: Manifestes Kubernetes lisibles
+        run: uv run python -c "import sys, yaml; [list(yaml.safe_load_all(open(f))) for f in sys.argv[1:]]" apps/crime_bulletin/deploy/k8s/*.yaml
+
+  image-ui:
+    runs-on: ubuntu-latest
+    needs: tests
+    steps:
+      - uses: actions/checkout@v4
+      - name: Construire l'image de l'interface (sans la pousser)
+        run: docker build -f apps/crime_bulletin/deploy/docker/Dockerfile.ui -t crime-ui:ci .

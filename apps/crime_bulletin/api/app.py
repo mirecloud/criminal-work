@@ -119,7 +119,14 @@ def live():
 def ready():
     m = modele()
     return {"status": "ready", "modele": m.version, "derniere_semaine": m.panel["SEMAINE"].max().date().isoformat(),
-            "prompts": (PROMPTS / "instructions.txt").is_file()}
+            "prompts": (PROMPTS / "instructions.txt").is_file(), "llm_manquant": B.variables_manquantes()}
+
+
+def llm_configure():
+    """Une variable du LLM absente est une erreur de déploiement, pas une panne du serveur LLM : on le dit."""
+    manquantes = B.variables_manquantes()
+    if manquantes:
+        raise HTTPException(503, f"LLM non configuré : variable(s) {', '.join(manquantes)} absente(s) ; la prévision reste disponible.")
 
 
 @app.get("/semaines")
@@ -166,8 +173,11 @@ def bilan(demande: BilanDemande):
         instructions = (PROMPTS / "instructions.txt").read_text(encoding="utf-8")
     except FileNotFoundError:
         raise HTTPException(503, "Instructions du LLM absentes : active un prompt (prompts/instructions.txt).") from None
+    llm_configure()
+    if m.marge_90 is None:
+        raise HTTPException(503, "Marge d'erreur à 90 % absente : relance le notebook 04 (diagnostic_2024_2026.csv).")
     cible, tableau = _prevoir(m, demande.derniere_connue)
-    d = B.donnees(cible, tableau, m.marge, m.version, cible - P.pd.Timedelta(weeks=m.horizon))
+    d = B.donnees(cible, tableau, m.marge_90, m.version, cible - P.pd.Timedelta(weeks=m.horizon))
     debut = time.perf_counter()
     try:
         texte = B.rediger(d, instructions)
@@ -188,6 +198,7 @@ def question(demande: QuestionDemande):
         instructions = (PROMPTS / "questions.txt").read_text(encoding="utf-8")
     except FileNotFoundError:
         raise HTTPException(503, "Instructions du LLM absentes (prompts/questions.txt).") from None
+    llm_configure()
     cible, tableau = _prevoir(m, demande.derniere_connue)
     d = Q.donnees(cible, tableau, cible - P.pd.Timedelta(weeks=m.horizon), m.marge, m.marge_90, m.seuil_signal,
                   max(m.meta["fenetres"]), m.version)

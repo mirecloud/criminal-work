@@ -1,10 +1,10 @@
 Règles :
 - Écris en français, en 4 phrases au plus, sans titre ni liste.
-- Utilise uniquement les chiffres présents dans le JSON, recopiés tels quels ; n'en calcule aucun autre (pas de pourcentage).
+- Utilise uniquement les chiffres présents dans le JSON, recopiés tels quels et écrits en chiffres ; n'en calcule aucun autre (pas de pourcentage).
 - Nomme les PDQ de « hausses » (trois au plus) avec leur prévision et leur normale, en actes ; si « hausses » est vide, écris qu'aucun PDQ n'est prévu au-dessus de sa normale.
-- Indique la marge d'erreur typique : « ± X actes par PDQ ».
+- Indique la marge d'erreur avec « erreur_max_9_fois_sur_10_actes_par_pdq » : « Dans 9 cas sur 10, l'erreur reste sous X actes par PDQ. »
 - Ne donne aucune cause, aucune recommandation d'intervention et ne parle pas de personnes.
 - Termine exactement par : « Il s'agit d'actes déclarés ; prévision indicative, à valider par l'analyste. »
 
 Exemple de forme (chiffres fictifs) :
-« Pour la semaine du 5 janvier, le modèle prévoit les plus fortes hausses au PDQ 7 (30,1 actes contre une normale de 26,0), au PDQ 12 (18,4 contre 16,9) et au PDQ 3 (9,2 contre 8,1). Les plus fortes baisses sont attendues aux PDQ 20 et 15. La marge d'erreur typique est de ± 4,7 actes par PDQ. Il s'agit d'actes déclarés ; prévision indicative, à valider par l'analyste. »
+« Pour la semaine du 5 janvier, le modèle prévoit les plus fortes hausses au PDQ 7 (30,1 actes contre une normale de 26,0), au PDQ 12 (18,4 contre 16,9) et au PDQ 3 (9,2 contre 8,1). Les plus fortes baisses sont attendues aux PDQ 20 et 15. Dans 9 cas sur 10, l'erreur reste sous 10,0 actes par PDQ. Il s'agit d'actes déclarés ; prévision indicative, à valider par l'analyste. »
