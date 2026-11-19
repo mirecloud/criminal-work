@@ -15,9 +15,10 @@ spec:
       labels: {app: crime-ui}
     spec:
       securityContext: {runAsNonRoot: true}
+      imagePullSecrets: [{name: dockerhub}]   # identifiant Docker Hub (Secret créé à la main, voir 10-config.yaml)
       containers:
         - name: ui
-          image: ml520-registry:5000/crime-ui:0.1.0
+          image: mirecloud/crime-ui:1.0.0
           ports: [{name: http, containerPort: 8501}]
           env:
             - {name: CRIME_API_URL, value: "http://crime-api"}

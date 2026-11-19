@@ -18,9 +18,10 @@ spec:
         spec:
           restartPolicy: Never
           securityContext: {runAsNonRoot: true}
+          imagePullSecrets: [{name: dockerhub}]   # identifiant Docker Hub (Secret créé à la main, voir 10-config.yaml)
           containers:
             - name: bilan
-              image: ml520-registry:5000/crime-api:0.1.0   # même tag que le Deployment en service
+              image: mirecloud/crime-api:1.0.0   # même tag que le Deployment en service
               command: ["python", "apps/crime_bulletin/jobs/bilan_hebdo.py"]
               env:
                 - {name: CRIME_API_URL, value: "http://crime-api"}

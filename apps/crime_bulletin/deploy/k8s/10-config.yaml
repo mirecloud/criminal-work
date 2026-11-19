@@ -2,6 +2,8 @@
 #   kubectl -n ml510 create secret generic crime-llm --from-literal=LLM_API_KEY=...
 # Le certificat de l'autorité mirecloud va dans le ConfigMap crime-llm-ca :
 #   kubectl -n ml510 create configmap crime-llm-ca --from-file=ca.crt=chemin/vers/mirecloud-ca.crt
+# L'identifiant Docker Hub (utile si le dépôt mirecloud est privé) va dans le Secret dockerhub :
+#   kubectl -n ml510 create secret docker-registry dockerhub --docker-username=mirecloud --docker-password=<token>
 apiVersion: v1
 kind: ConfigMap
 metadata:

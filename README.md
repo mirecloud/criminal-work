@@ -104,13 +104,13 @@ L'interface appelle l'API à l'adresse `CRIME_API_URL` (par défaut `http://127.
 
 Deux images : l'API embarque le code, les consignes du LLM et les artefacts des notebooks 00 et 04 (un tag = une paire code + données). L'interface n'embarque que Streamlit et n'appelle que l'API. Le `.env` n'entre jamais dans une image (voir `.dockerignore`).
 
-Construisez les images depuis la racine, après avoir exécuté les notebooks, puis poussez-les dans le registre du cluster :
+Construisez les images depuis la racine, après avoir exécuté les notebooks, puis poussez-les sur Docker Hub (`docker login -u mirecloud` une fois avant) :
 
 ```bash
-docker build -f apps/crime_bulletin/deploy/docker/Dockerfile.api -t localhost:5000/crime-api:0.1.0 .
-docker build -f apps/crime_bulletin/deploy/docker/Dockerfile.ui -t localhost:5000/crime-ui:0.1.0 .
-docker push localhost:5000/crime-api:0.1.0
-docker push localhost:5000/crime-ui:0.1.0
+docker build -f apps/crime_bulletin/deploy/docker/Dockerfile.api -t mirecloud/crime-api:1.0.0 .
+docker build -f apps/crime_bulletin/deploy/docker/Dockerfile.ui -t mirecloud/crime-ui:1.0.0 .
+docker push mirecloud/crime-api:1.0.0
+docker push mirecloud/crime-ui:1.0.0
 ```
 
 Pointez `kubectl` sur le cluster k3d, sans changer votre contexte par défaut :
@@ -119,12 +119,13 @@ Pointez `kubectl` sur le cluster k3d, sans changer votre contexte par défaut :
 export KUBECONFIG=$(k3d kubeconfig write ml520)
 ```
 
-Créez le namespace, puis la clé du LLM et le certificat de l'autorité mirecloud. Ces deux objets ne sont pas dans le dépôt :
+Créez le namespace, puis la clé du LLM, le certificat de l'autorité mirecloud et l'identifiant Docker Hub (seulement si le dépôt est privé). Ces objets ne sont pas dans le dépôt :
 
 ```bash
 kubectl apply -f apps/crime_bulletin/deploy/k8s/00-namespace.yaml
 kubectl -n ml510 create secret generic crime-llm --from-literal=LLM_API_KEY='<clé>'
 kubectl -n ml510 create configmap crime-llm-ca --from-file=ca.crt=<chemin>/mirecloud-ca.crt
+kubectl -n ml510 create secret docker-registry dockerhub --docker-username=mirecloud --docker-password='<token>'
 ```
 
 Appliquez le reste et ouvrez l'interface :
