@@ -119,6 +119,53 @@ L'interface appelle l'API à l'adresse `CRIME_API_URL` (par défaut `http://127.
 | `POST /bilan` | Bilan rédigé par le LLM, puis vérifié. |
 | `POST /question` | Question libre sur les chiffres de la semaine. |
 
+### Appeler l'API avec curl (depuis la machine `mlops`)
+
+L'API n'est pas exposée sur Internet : seule l'interface l'est. Pour l'appeler, ouvrez d'abord un tunnel vers le Service du cluster, dans un terminal que vous laissez ouvert :
+
+```bash
+kubectl -n ml510 port-forward svc/crime-api 8000:80
+```
+
+Avec l'API lancée en local (`uv run uvicorn …`), sautez cette étape : elle répond déjà sur le port 8000.
+
+Puis, dans un second terminal :
+
+```bash
+# Santé du service
+curl -s localhost:8000/health/live
+curl -s localhost:8000/health/ready
+
+# Semaines disponibles (les plus récentes)
+curl -s localhost:8000/semaines | python3 -m json.tool | tail -5
+
+# Prévision de la semaine la plus récente
+curl -s localhost:8000/prevision | python3 -m json.tool
+
+# Prévision rejouée : dernière semaine consolidée = 12 octobre → semaine prédite du 9 novembre
+curl -s "localhost:8000/prevision?derniere_connue=2026-10-12" | python3 -m json.tool
+
+# Historique d'un PDQ
+curl -s "localhost:8000/historique?pdq=21" | python3 -m json.tool
+
+# Bilan rédigé par le LLM puis contrôlé (quelques secondes)
+curl -s -X POST localhost:8000/bilan -H "Content-Type: application/json" -d '{}' | python3 -m json.tool
+
+# Question libre
+curl -s -X POST localhost:8000/question -H "Content-Type: application/json" \
+  -d '{"question": "Que prévoit-on pour le PDQ 21 ?"}' | python3 -m json.tool
+```
+
+Avec le tunnel ouvert, la documentation interactive de FastAPI est sur http://localhost:8000/docs : chaque route s'y essaie avec « Try it out ».
+
+Depuis un poste Windows, prolongez le tunnel par SSH (`ssh -N -L 8000:localhost:8000 asd@192.168.2.223`), puis utilisez `curl.exe` ou `Invoke-RestMethod` dans PowerShell, sur la même adresse.
+
+Si le tunnel est refusé par la NetworkPolicy (seuls les pods de `ml510` peuvent appeler l'API), faites l'appel depuis le pod de l'interface :
+
+```bash
+kubectl -n ml510 exec deploy/crime-ui -- python -c "import httpx; print(httpx.get('http://crime-api/prevision').text[:500])"
+```
+
 ## Déploiement sur le homelab (k3d)
 
 Deux images : l'API embarque le code, les consignes du LLM et les artefacts des notebooks 00 et 04 (un tag = une paire code + données). L'interface n'embarque que Streamlit et n'appelle que l'API. Le `.env` n'entre jamais dans une image (voir `.dockerignore`).
